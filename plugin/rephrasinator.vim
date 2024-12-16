@@ -3,7 +3,7 @@ if !has('python3')
     finish
 endif
 
-python3 import rephrasinator_package.rephrasinator
-python3 rephrasinator = rephrasinator_package.rephrasinator.Rephrasinator()
+python3 import rephrasinator_package.rephrasinator_nvim
+python3 rephrasinator = rephrasinator_package.rephrasinator_nvim.Rephrasinator()
 
 command! RephraseTest python3 rephrasinator.test()
