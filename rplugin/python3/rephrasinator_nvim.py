@@ -9,17 +9,31 @@ class Rephrasinator:
 
     @pynvim.command("TR", nargs="*", range="")
     def test_rephrasinator(self, args, range):
-        answers = test()
+        if not range:
+            return
+        start_line, end_line = range
+        selected_text = self.nvim.current.buffer[start_line - 1 : end_line]
 
-        for i, a in enumerate(answers):
-            answers[i] = str(i + 1) + " " + a
+        if len(selected_text) == 1 and selected_text[0] == "":
+            return
 
-        choices = ["Select an answer:"] + answers
+        choices = test("".join(selected_text).strip())
 
-        choice = self.nvim.eval(f"inputlist({choices})")
-
-        if choice > 0:
-            selected_answer = answers[choice - 1]
-            self.nvim.command(f"echo 'You selected: {selected_answer}'")
-        else:
-            self.nvim.command("echo 'No selection made'")
+        self.nvim.call(
+            "luaeval",
+            """
+            require("telescope.pickers").new({}, {
+                finder = require("telescope.finders").new_table({ results = _A }),
+                sorter = require("telescope.config").values.generic_sorter({}),
+                attach_mappings = function(_, map)
+                    map('i', '<CR>', function(prompt_bufnr)
+                        local selection = require("telescope.actions.state").get_selected_entry()
+                        require("telescope.actions").close(prompt_bufnr)
+                        vim.api.nvim_buf_set_lines(0, 0, -1, false, {selection[1]})
+                    end)
+                    return true
+                end
+            }):find()
+            """,
+            choices,
+        )
