@@ -1,5 +1,29 @@
 local M = {}
 
+M.setup = function()
+  if not vim.fn.exists(":Rephrasinator") then
+    vim.notify("Rephrasinator setup failed: 'Rephrasinator' command not found", vim.log.levels.ERROR)
+    return
+  end
+
+  require("telescope").setup({
+    defaults = {
+      layout_config = {
+        width = 0.8,
+        height = 0.4,
+      },
+      file_ignore_patterns = { "node_modules" },
+    },
+  })
+
+  vim.api.nvim_set_keymap(
+    "v",
+    "<leader>rp",
+    "<cmd>Rephrasinator<CR>",
+    { noremap = true, silent = true }
+  )
+end
+
 M.show_picker = function(choices, start_line, end_line, highlight_text)
   require("telescope.pickers").new({}, {
     finder = require("telescope.finders").new_table({ results = choices }),
