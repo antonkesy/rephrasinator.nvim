@@ -19,21 +19,12 @@ class Rephrasinator:
 
         choices = test("".join(selected_text).strip())
 
-        self.nvim.call(
-            "luaeval",
+        self.nvim.exec_lua(
             """
-            require("telescope.pickers").new({}, {
-                finder = require("telescope.finders").new_table({ results = _A }),
-                sorter = require("telescope.config").values.generic_sorter({}),
-                attach_mappings = function(_, map)
-                    map('i', '<CR>', function(prompt_bufnr)
-                        local selection = require("telescope.actions.state").get_selected_entry()
-                        require("telescope.actions").close(prompt_bufnr)
-                        vim.api.nvim_buf_set_lines(0, 0, -1, false, {selection[1]})
-                    end)
-                    return true
-                end
-            }):find()
+            local choices, start_line, end_line = ...
+            require('rephrasinator').show_picker(choices, start_line, end_line)
             """,
             choices,
+            start_line,
+            end_line,
         )
