@@ -3,7 +3,8 @@ if !has('python3')
     finish
 endif
 
-python3 import rephrasinator_package.rephrasinator_nvim
-python3 rephrasinator = rephrasinator_package.rephrasinator_nvim.Rephrasinator()
+" if has('nvim-0.5')
+"     call remote#host#UpdateRemotePlugins()
+" endif
 
-command! RephraseTest python3 rephrasinator.test()
+
