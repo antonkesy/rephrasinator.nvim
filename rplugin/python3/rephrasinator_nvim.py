@@ -1,59 +1,70 @@
-from typing import Set
-import pynvim
 import asyncio
+from dataclasses import dataclass
+from typing import Optional, Set
+
+import pynvim
 from rephrasinator import get_rephrased_sentence
 
 
 @pynvim.plugin
 class Rephrasinator:
-    NUMBER_OF_SUGGESTIONS = 30
+    NUMBER_OF_SUGGESTIONS = 10
     choices: Set[str]
 
     def __init__(self, nvim):
         self.nvim = nvim
 
-    def get_visual_selection(self) -> str:
+    @dataclass
+    class Selection:
+        text: str
+        start_line: int
+        start_col: int
+        end_col: int
+
+    def get_visual_selection(self) -> Optional[Selection]:
         buf = self.nvim.current.buffer
         start_pos = self.nvim.call("getpos", "v")
         end_pos = self.nvim.call("getpos", ".")
         start_line, start_col = start_pos[1] - 1, start_pos[2] - 1
         end_line, end_col = end_pos[1] - 1, end_pos[2]
 
-        if start_line == end_line:  # Single line selection
-            return buf[start_line][start_col:end_col]
-        else:  # Multi-line selection
-            selected_text = [buf[start_line][start_col:]]
-            selected_text.extend(buf[start_line + 1 : end_line])
-            selected_text.append(buf[end_line][:end_col])
-            return "\n".join(selected_text)
+        if start_line != end_line:
+            self.nvim.err_write("Multi-line selection not supported\n")
+            return None
+
+        return Rephrasinator.Selection(
+            buf[start_line][start_col:end_col], start_line, start_col, end_col
+        )
 
     @pynvim.command("Rephrasinator", nargs="*", range="")
-    def test_rephrasinator(self, _, range: range) -> None:
-        selected_text = self.get_visual_selection()
+    def test_rephrasinator(self, _, _range: range) -> None:
+        selection = self.get_visual_selection()
+        if not selection:
+            return
 
         self.choices = set()
 
-        if not selected_text.strip():
+        if not selection.text.strip():
             return
 
         self.nvim.exec_lua(
             """
-            local choices, start_line, end_line = ...
-            require('rephrasinator').show_picker(choices, start_line, end_line)
+            local choices, start_line, start_col, end_col = ...
+            require('rephrasinator').show_picker(choices, start_line, start_col, end_col)
             """,
             [],
-            range[0],
-            range[1],
+            selection.start_line,
+            selection.start_col,
+            selection.end_col,
         )
-
-        asyncio.create_task(self.fill_choices(selected_text))
+        asyncio.create_task(self.fill_choices(selection.text))
 
     async def get_choices(self, text_to_rephrase: str):
         for _ in range(self.NUMBER_OF_SUGGESTIONS):
             result = get_rephrased_sentence(text_to_rephrase)
             if result:
                 yield result
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0.001)
 
     async def fill_choices(self, selected_text: str) -> None:
         try:

@@ -27,7 +27,11 @@ end
 local results = {}
 local picker = nil
 
-M.show_picker = function(choices, start_line, end_line)
+M.is_picker_open = function()
+  return picker ~= nil
+end
+
+M.show_picker = function(choices, start_line, start_col, end_col)
   results = choices or {}
 
   picker = require("telescope.pickers").new({}, {
@@ -47,7 +51,10 @@ M.show_picker = function(choices, start_line, end_line)
         local selection = require("telescope.actions.state").get_selected_entry()
         require("telescope.actions").close(prompt_bufnr)
         if selection then
-          vim.api.nvim_buf_set_lines(0, start_line - 1, end_line, false, { selection.value })
+          -- Replace only the selected part of the text, not the entire line
+          local line = vim.api.nvim_buf_get_lines(0, start_line, start_line + 1, false)[1]
+          local new_line = line:sub(1, start_col) .. selection.value .. line:sub(end_col + 1)
+          vim.api.nvim_buf_set_lines(0, start_line, start_line + 1, false, { new_line })
         end
       end)
       return true
