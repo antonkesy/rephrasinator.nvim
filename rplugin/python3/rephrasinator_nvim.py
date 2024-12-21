@@ -3,21 +3,10 @@ import asyncio
 from rephrasinator import get_rephrased_sentence
 
 
-async def test(t: str):
-    examples = [
-        t,
-        t[::-1],
-        "Rephrased sentence 1",
-        "Rephrased sentence 2",
-        "Rephrased sentence 3",
-    ]
-    for example in examples:
-        await asyncio.sleep(0.5)
-        yield example
-
-
 @pynvim.plugin
 class Rephrasinator:
+    NUMBER_OF_SUGGESTIONS = 30
+
     def __init__(self, nvim):
         self.nvim = nvim
 
@@ -43,7 +32,6 @@ class Rephrasinator:
         if not selected_text.strip():
             return
 
-        # = get_rephrased_sentence(selected_text.strip())
         self.nvim.exec_lua(
             """
             local choices, start_line, end_line = ...
@@ -54,11 +42,19 @@ class Rephrasinator:
             range[1],
         )
 
-        asyncio.create_task(self.async_get_choices(selected_text))
+        asyncio.create_task(self.fill_choices(selected_text))
 
-    async def async_get_choices(self, selected_text: str) -> None:
+    async def get_choices(self, text_to_rephrase: str):
+        yield text_to_rephrase
+        for _ in range(self.NUMBER_OF_SUGGESTIONS):
+            result = get_rephrased_sentence(text_to_rephrase)
+            if result:
+                yield result
+            await asyncio.sleep(0.01)
+
+    async def fill_choices(self, selected_text: str) -> None:
         try:
-            async for choice in test(selected_text.strip()):
+            async for choice in self.get_choices(selected_text.strip()):
                 self.nvim.async_call(
                     lambda: self.nvim.exec_lua(
                         """
