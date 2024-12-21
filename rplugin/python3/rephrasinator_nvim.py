@@ -1,5 +1,19 @@
 import pynvim
-from rephrasinator import get_rephrased_sentence, test
+import asyncio
+from rephrasinator import get_rephrased_sentence
+
+
+async def test(t: str):
+    examples = [
+        t,
+        t[::-1],
+        "Rephrased sentence 1",
+        "Rephrased sentence 2",
+        "Rephrased sentence 3",
+    ]
+    for example in examples:
+        await asyncio.sleep(0.5)
+        yield example
 
 
 @pynvim.plugin
@@ -29,16 +43,31 @@ class Rephrasinator:
         if not selected_text.strip():
             return
 
-        # choices = get_rephrased_sentence(selected_text.strip())
-        choices = test(selected_text.strip())
-
+        # = get_rephrased_sentence(selected_text.strip())
         self.nvim.exec_lua(
             """
-            local choices, start_line, end_line, selected_text = ...
-            require('rephrasinator').show_picker(choices, start_line, end_line, selected_text)
+            local choices, start_line, end_line = ...
+            require('rephrasinator').show_picker(choices, start_line, end_line)
             """,
-            choices,
+            [],
             range[0],
             range[1],
-            selected_text,
         )
+
+        asyncio.create_task(self.async_get_choices(selected_text))
+
+    async def async_get_choices(self, selected_text: str) -> None:
+        try:
+            async for choice in test(selected_text.strip()):
+                self.nvim.async_call(
+                    lambda: self.nvim.exec_lua(
+                        """
+                        local choice = ...
+                        print("Received choice in Lua:", choice)  -- Debugging log
+                        require('rephrasinator').add_to_picker(choice)
+                        """,
+                        choice,
+                    )
+                )
+        except Exception as e:
+            self.nvim.err_write(f"Error fetching choices: {e}\n")
