@@ -1,3 +1,4 @@
+from typing import Set
 import pynvim
 import asyncio
 from rephrasinator import get_rephrased_sentence
@@ -6,6 +7,7 @@ from rephrasinator import get_rephrased_sentence
 @pynvim.plugin
 class Rephrasinator:
     NUMBER_OF_SUGGESTIONS = 30
+    choices: Set[str]
 
     def __init__(self, nvim):
         self.nvim = nvim
@@ -29,6 +31,8 @@ class Rephrasinator:
     def test_rephrasinator(self, _, range: range) -> None:
         selected_text = self.get_visual_selection()
 
+        self.choices = set()
+
         if not selected_text.strip():
             return
 
@@ -45,7 +49,6 @@ class Rephrasinator:
         asyncio.create_task(self.fill_choices(selected_text))
 
     async def get_choices(self, text_to_rephrase: str):
-        yield text_to_rephrase
         for _ in range(self.NUMBER_OF_SUGGESTIONS):
             result = get_rephrased_sentence(text_to_rephrase)
             if result:
@@ -55,6 +58,11 @@ class Rephrasinator:
     async def fill_choices(self, selected_text: str) -> None:
         try:
             async for choice in self.get_choices(selected_text.strip()):
+                # ensure unique choices
+                if choice in self.choices:
+                    continue
+                self.choices.add(choice)
+
                 self.nvim.async_call(
                     lambda: self.nvim.exec_lua(
                         """
