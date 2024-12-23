@@ -27,10 +27,6 @@ end
 local results = {}
 local picker = nil
 
-M.is_picker_open = function()
-  return picker ~= nil
-end
-
 M.show_picker = function(choices, start_line, start_col, end_col)
   results = choices or {}
 
@@ -63,6 +59,15 @@ M.show_picker = function(choices, start_line, start_col, end_col)
   })
 
   picker:find()
+
+  -- Stop choice generation when the picker is closed
+  local win_id = picker.prompt_win
+  vim.api.nvim_create_autocmd("WinClosed", {
+    pattern = tostring(win_id),
+    callback = function()
+      vim.cmd("RephrasinatorStop")
+    end,
+  })
 end
 
 M.add_to_picker = function(choice)

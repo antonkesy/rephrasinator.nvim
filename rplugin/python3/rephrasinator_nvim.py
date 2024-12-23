@@ -8,11 +8,12 @@ from rephrasinator import get_rephrased_sentence
 
 @pynvim.plugin
 class Rephrasinator:
-    NUMBER_OF_SUGGESTIONS = 10
+    NUMBER_OF_SUGGESTIONS = 100
     choices: Set[str]
 
     def __init__(self, nvim):
         self.nvim = nvim
+        self.stop_event = asyncio.Event()
 
     @dataclass
     class Selection:
@@ -57,6 +58,7 @@ class Rephrasinator:
             selection.start_col,
             selection.end_col,
         )
+        self.stop_event.clear()
         asyncio.create_task(self.fill_choices(selection.text))
 
     async def get_choices(self, text_to_rephrase: str):
@@ -69,6 +71,9 @@ class Rephrasinator:
     async def fill_choices(self, selected_text: str) -> None:
         try:
             async for choice in self.get_choices(selected_text.strip()):
+                if self.stop_event.is_set():
+                    break
+
                 # ensure unique choices
                 if choice in self.choices:
                     continue
@@ -78,7 +83,6 @@ class Rephrasinator:
                     lambda: self.nvim.exec_lua(
                         """
                         local choice = ...
-                        print("Received choice in Lua:", choice)  -- Debugging log
                         require('rephrasinator').add_to_picker(choice)
                         """,
                         choice,
@@ -86,3 +90,7 @@ class Rephrasinator:
                 )
         except Exception as e:
             self.nvim.err_write(f"Error fetching choices: {e}\n")
+
+    @pynvim.command("RephrasinatorStop", nargs="*")
+    def stop_rephrasinator(self, *_):
+        self.stop_event.set()
