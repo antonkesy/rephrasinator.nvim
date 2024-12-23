@@ -35,6 +35,7 @@ M.show_picker = function(choices, start_line, start_col, end_col)
   results = choices or {}
 
   picker = require("telescope.pickers").new({}, {
+    prompt_title = "Rephrasinator",
     finder = require("telescope.finders").new_table({
       results = results,
       entry_maker = function(entry)
