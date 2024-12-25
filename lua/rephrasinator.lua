@@ -12,7 +12,6 @@ M.setup = function()
         width = 0.8,
         height = 0.4,
       },
-      file_ignore_patterns = { "node_modules" },
     },
   })
 
