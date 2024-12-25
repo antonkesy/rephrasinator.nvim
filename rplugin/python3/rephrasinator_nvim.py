@@ -14,6 +14,7 @@ class Rephrasinator:
     def __init__(self, nvim):
         self.nvim = nvim
         self.stop_event = asyncio.Event()
+        self.prompt_request: Optional[str] = None
 
     @dataclass
     class Selection:
@@ -64,7 +65,7 @@ class Rephrasinator:
 
     async def get_choices(self, text_to_rephrase: str):
         for _ in range(self.NUMBER_OF_SUGGESTIONS):
-            result = get_rephrased_sentence(text_to_rephrase)
+            result = get_rephrased_sentence(text_to_rephrase, self.prompt_request)
             if result:
                 yield result
             await asyncio.sleep(0.001)
@@ -95,3 +96,16 @@ class Rephrasinator:
     @pynvim.command("RephrasinatorStop", nargs="*")
     def stop_rephrasinator(self, *_):
         self.stop_event.set()
+
+    @pynvim.command("RephrasinatorUpdatePrompt", nargs="*")
+    def update_rephrasinator(self, args):
+        prompt = " ".join(args)
+        if prompt == self.prompt_request:
+            return  # no need to update
+        self.prompt_request = prompt
+        self.choices = set()
+        self.nvim.exec_lua(
+            """
+            require('rephrasinator').clear_results()
+            """,
+        )

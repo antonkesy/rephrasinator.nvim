@@ -26,13 +26,18 @@ end
 local results = {}
 local picker = nil
 
+local prompt_request = function(prompt)
+  vim.cmd("RephrasinatorUpdatePrompt " .. prompt)
+  return results
+end
+
 M.show_picker = function(original_text, choices, start_line, start_col, end_col)
   results = choices or {}
 
   picker = require("telescope.pickers").new({}, {
     prompt_title = "Rephrasinator",
-    finder = require("telescope.finders").new_table({
-      results = results,
+    finder = require("telescope.finders").new_dynamic({
+      fn = prompt_request,
       entry_maker = function(entry)
         return {
           value = entry,
@@ -50,7 +55,6 @@ M.show_picker = function(original_text, choices, start_line, start_col, end_col)
         vim.api.nvim_buf_add_highlight(self.state.bufnr, -1, "TelescopePreviewMatch", 1, 0, -1)
       end,
     }),
-    sorter = require("telescope.config").values.generic_sorter({}),
     attach_mappings = function(_, map)
       map('i', '<CR>', function(prompt_bufnr)
         local selection = require("telescope.actions.state").get_selected_entry()
@@ -85,33 +89,29 @@ M.add_to_picker = function(choice)
 
   local current_selection = require("telescope.actions.state").get_selected_entry()
   if current_selection then
+    local state = require("telescope.actions.state")
+    local prompt_bufnr = state.get_current_picker(picker.prompt_bufnr)
     vim.defer_fn(function()
-      local state = require("telescope.actions.state")
       for i, entry in ipairs(results) do
         if entry == current_selection.value then
-          if not state.get_current_picker(picker.prompt_bufnr) then
+          if not prompt_bufnr then
             break
           end
-          state.get_current_picker(picker.prompt_bufnr):set_selection(i - 1)
+          prompt_bufnr:set_selection(i - 1)
           break
         end
       end
-    end, 10)
+    end, 1)
   end
 
   table.insert(results, choice)
 
 
-  picker:refresh(require("telescope.finders").new_table({
-    results = results,
-    entry_maker = function(entry)
-      return {
-        value = entry,
-        display = entry,
-        ordinal = entry,
-      }
-    end,
-  }), require("telescope.config").values.generic_sorter({}))
+  picker:refresh(require("telescope.finders").new_dynamic({ fn = prompt_request, }))
+end
+
+M.clear_results = function()
+  results = {}
 end
 
 return M
