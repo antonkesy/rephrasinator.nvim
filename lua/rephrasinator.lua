@@ -27,7 +27,7 @@ end
 local results = {}
 local picker = nil
 
-M.show_picker = function(choices, start_line, start_col, end_col)
+M.show_picker = function(original_text, choices, start_line, start_col, end_col)
   results = choices or {}
 
   picker = require("telescope.pickers").new({}, {
@@ -40,6 +40,15 @@ M.show_picker = function(choices, start_line, start_col, end_col)
           display = entry,
           ordinal = entry,
         }
+      end,
+    }),
+    previewer = require("telescope.previewers").new_buffer_previewer({
+      define_preview = function(self, entry)
+        vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, { "Original Selection:", original_text })
+        -- vim.api.nvim_buf_add_highlight(self.state.bufnr, -1, "TelescopePreviewMatch", 1, 0, -1)
+
+        -- Resize the preview window dynamically
+        vim.api.nvim_win_set_height(self.state.winid, 2)
       end,
     }),
     sorter = require("telescope.config").values.generic_sorter({}),

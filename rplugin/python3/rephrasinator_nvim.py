@@ -50,9 +50,10 @@ class Rephrasinator:
 
         self.nvim.exec_lua(
             """
-            local choices, start_line, start_col, end_col = ...
-            require('rephrasinator').show_picker(choices, start_line, start_col, end_col)
+            local original_text, choices, start_line, start_col, end_col = ...
+            require('rephrasinator').show_picker(original_text, choices, start_line, start_col, end_col)
             """,
+            selection.text,
             [],
             selection.start_line,
             selection.start_col,
