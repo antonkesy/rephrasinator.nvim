@@ -75,7 +75,24 @@ M.add_to_picker = function(choice)
     return
   end
 
+  local current_selection = require("telescope.actions.state").get_selected_entry()
+  if current_selection then
+    vim.defer_fn(function()
+      local state = require("telescope.actions.state")
+      for i, entry in ipairs(results) do
+        if entry == current_selection.value then
+          if not state.get_current_picker(picker.prompt_bufnr) then
+            break
+          end
+          state.get_current_picker(picker.prompt_bufnr):set_selection(i - 1)
+          break
+        end
+      end
+    end, 10)
+  end
+
   table.insert(results, choice)
+
 
   picker:refresh(require("telescope.finders").new_table({
     results = results,
