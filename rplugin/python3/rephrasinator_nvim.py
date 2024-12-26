@@ -39,7 +39,7 @@ class Rephrasinator:
         )
 
     @pynvim.command("Rephrasinator", nargs="*", range="")
-    def test_rephrasinator(self, _, _range: range) -> None:
+    def test_rephrasinator(self, *_) -> None:
         selection = self.get_visual_selection()
         if not selection:
             return
