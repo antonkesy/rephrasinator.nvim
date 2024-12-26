@@ -87,27 +87,32 @@ M.add_to_picker = function(choice)
     return
   end
 
+  table.insert(results, choice)
+  picker:refresh(require("telescope.finders").new_dynamic({ fn = prompt_request, }))
+
   local current_selection = require("telescope.actions.state").get_selected_entry()
-  if current_selection then
-    local state = require("telescope.actions.state")
-    local prompt_bufnr = state.get_current_picker(picker.prompt_bufnr)
-    vim.defer_fn(function()
-      for i, entry in ipairs(results) do
-        if entry == current_selection.value then
-          if not prompt_bufnr then
-            break
-          end
-          prompt_bufnr:set_selection(i - 1)
-          break
-        end
-      end
-    end, 1)
+  local new_selection = nil
+  local state = require("telescope.actions.state")
+  local prompt_bufnr = state.get_current_picker(picker.prompt_bufnr)
+
+  if (not prompt_bufnr) or (not current_selection) then
+    return
   end
 
-  table.insert(results, choice)
+  for i, entry in ipairs(results) do
+    if entry == current_selection.value then
+      new_selection = i
+      break
+    end
+  end
 
-
-  picker:refresh(require("telescope.finders").new_dynamic({ fn = prompt_request, }))
+  if new_selection then
+    for i = 1, 50 do -- TODO: hack to get less flickering without async adding entries
+      vim.defer_fn(function()
+        prompt_bufnr:set_selection(new_selection - 1)
+      end, i)
+    end
+  end
 end
 
 M.clear_results = function()
